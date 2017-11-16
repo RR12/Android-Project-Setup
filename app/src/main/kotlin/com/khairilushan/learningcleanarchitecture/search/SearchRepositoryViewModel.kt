@@ -39,4 +39,8 @@ class SearchRepositoryViewModel
 
     fun showErrorMessage(): LiveData<String?> = mErrorMessage
 
+    override fun onCleared() {
+        searchRepository.dispose()
+        super.onCleared()
+    }
 }

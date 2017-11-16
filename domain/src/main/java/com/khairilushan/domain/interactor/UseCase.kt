@@ -12,7 +12,7 @@ abstract class UseCase<Type, in Params> {
 
     abstract fun build(params: Params?): Single<Type>
 
-    private fun dispose() = disposables.dispose()
+    fun dispose() = disposables.dispose()
 
     fun execute(onSuccess: (Type) -> Unit, onError: (Throwable) -> Unit, params: Params? = null) {
         disposables.add(build(params).subscribe(onSuccess, onError))
