@@ -7,9 +7,11 @@ import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.LinearLayoutManager
 import com.jakewharton.rxbinding2.widget.RxTextView
 import com.khairilushan.learningcleanarchitecture.R
+import com.khairilushan.learningcleanarchitecture.shared.extension.disposed
 import com.khairilushan.learningcleanarchitecture.shared.extension.showShortToast
 import dagger.android.AndroidInjection
 import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.activity_search_repo.*
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -23,6 +25,7 @@ class SearchRepositoryActivity : AppCompatActivity() {
                 .get(SearchRepositoryViewModel::class.java)
     }
     private val mAdapter = SearchRepositoryAdapter()
+    private val mDisposables = CompositeDisposable()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AndroidInjection.inject(this)
@@ -60,6 +63,7 @@ class SearchRepositoryActivity : AppCompatActivity() {
                 .subscribe {
                     mViewModel.search(searchEditText.text.toString())
                 }
+                .disposed(mDisposables)
     }
 
 }
