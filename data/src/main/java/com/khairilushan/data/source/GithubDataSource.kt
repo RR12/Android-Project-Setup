@@ -1,11 +1,12 @@
 package com.khairilushan.data.source
 
-import com.khairilushan.data.disk.AppDatabase
-import com.khairilushan.data.network.RestApi
+import com.khairilushan.data.extension.await
+import com.khairilushan.data.local.AppDatabase
+import com.khairilushan.data.remote.RestApi
 import com.khairilushan.domain.model.Repo
 import com.khairilushan.domain.repository.GithubRepository
-import dagger.Lazy
-import io.reactivex.Single
+import kotlinx.coroutines.experimental.Deferred
+import kotlinx.coroutines.experimental.async
 import javax.inject.Inject
 
 /**
@@ -13,35 +14,34 @@ import javax.inject.Inject
  */
 interface GithubDataSource : GithubRepository {
 
-    class Factory
-    @Inject constructor(private val network: Lazy<Network>, private val disk: Lazy<Disk>) {
-        fun network(): Network = network.get()
-        fun disk(): Disk = disk.get()
-    }
+    class Remote @Inject constructor(
+        private val restApi: RestApi,
+        private val appDatabase: AppDatabase
+    ) : GithubRepository {
+        override fun searchLocally(query: String): Deferred<List<Repo>> {
+            throw IllegalArgumentException("searchLocally not available for remote data source")
+        }
 
-    class Network
-    @Inject constructor(private val restApi: RestApi,
-                        private val appDatabase: AppDatabase) : GithubRepository {
-        override fun search(query: String): Single<List<Repo>> {
-            return restApi.searchRepositories(query).map { result ->
-                result.items.map {
-                    appDatabase.insertRepo(it)
-                    it.toRepo()
-                }
+        override fun search(query: String): Deferred<List<Repo>> = async {
+            val entity = restApi.searchRepositories(query).await()
+            entity.items.map {
+                appDatabase.insertRepo(it)
+                it.toRepo()
             }
         }
     }
 
-    class Disk
-    @Inject constructor(private val appDatabase: AppDatabase) : GithubRepository {
-        override fun search(query: String): Single<List<Repo>> {
-            return when (query.isEmpty() || query.isBlank()) {
-                true -> appDatabase.getAllRepo().map { result ->
-                    result.map { it.toRepo() }
-                }
-                else -> appDatabase.findRepoByName(query).map { result ->
-                    result.map { it.toRepo() }
-                }
+    class Local @Inject constructor(
+        private val appDatabase: AppDatabase
+    ) : GithubRepository {
+        override fun search(query: String): Deferred<List<Repo>> {
+            throw IllegalArgumentException("search not available for local data source")
+        }
+
+        override fun searchLocally(query: String): Deferred<List<Repo>> = async {
+            when (query.isEmpty() || query.isBlank()) {
+                true -> appDatabase.getAllRepo().map { it.toRepo() }
+                else -> appDatabase.findRepoByName(query).map { it.toRepo() }
             }
         }
     }
